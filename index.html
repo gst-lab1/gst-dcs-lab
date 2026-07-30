@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DCS Lab · Resource Management</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+:root{
+  --bg:#f5f7fa;--surface:#fff;--surface2:#f0f4f9;--border:#dde3ed;--border2:#c8d2e2;
+  --blue:#2563eb;--blue-lt:#eff4ff;--cyan:#0891b2;--cyan-lt:#ecfeff;
+  --green:#059669;--green-lt:#ecfdf5;--amber:#d97706;--amber-lt:#fffbeb;
+  --red:#dc2626;--red-lt:#fef2f2;--purple:#7c3aed;--purple-lt:#f5f3ff;
+  --orange:#ea580c;--orange-lt:#fff7ed;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --radius:10px;--radius-lg:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;line-height:1.5}
+
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-name{font-size:14px;font-weight:700;letter-spacing:-.3px}
+.logo-sub{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:16px}
+.sync-status{display:flex;align-items:center;gap:5px;font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;border:1px solid var(--border)}
+.sync-status.ok{background:var(--green-lt);color:var(--green);border-color:#a7f3d0}
+.sync-status.err{background:var(--red-lt);color:var(--red);border-color:#fca5a5}
+.sync-status.loading{background:var(--amber-lt);color:var(--amber);border-color:#fcd34d}
+.live-pill{display:flex;align-items:center;gap:5px;background:var(--green-lt);border:1px solid #a7f3d0;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.clock{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
+
+.tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;overflow-x:auto}
+.tab-btn{padding:12px 18px;font-size:12px;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;font-family:'DM Sans','Noto Sans KR',sans-serif;white-space:nowrap}
+.tab-btn:hover{color:var(--blue)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+
+.page{padding:20px 24px;max-width:100%;margin:0 auto}
+.tab-pane{display:none}
+.tab-pane.active{display:block;animation:fadeUp .18s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12px;font-weight:600;color:var(--text2)}
+
+.form-group{margin-bottom:12px}
+.form-label{display:block;font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase}
+.form-input,.form-select{width:100%;padding:8px 11px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:'DM Sans','Noto Sans KR',sans-serif;outline:none;transition:border-color .15s,box-shadow .15s;appearance:none}
+.form-input:focus,.form-select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-textarea{width:100%;padding:8px 11px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:'DM Sans','Noto Sans KR',sans-serif;outline:none;resize:none}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:9px 16px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans','Noto Sans KR',sans-serif;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#047857}
+.btn-outline{background:var(--surface);color:var(--text2);border:1px solid var(--border2)}
+.btn-outline:hover{background:var(--surface2)}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:9px 14px}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-edit{background:none;border:1px solid #bfdbfe;color:var(--blue);font-size:10px;padding:3px 9px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-edit:hover{background:var(--blue-lt)}
+.btn-del{background:none;border:1px solid #fca5a5;color:var(--red);font-size:10px;padding:3px 9px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-del:hover{background:var(--red-lt)}
+.btn-complete{background:none;border:1px solid #a7f3d0;color:var(--green);font-size:10px;padding:3px 9px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-complete:hover{background:var(--green-lt)}
+
+.badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.3px;white-space:nowrap}
+.badge-green{background:var(--green-lt);color:var(--green);border:1px solid #a7f3d0}
+.badge-blue{background:var(--blue-lt);color:var(--blue);border:1px solid #bfdbfe}
+.badge-red{background:var(--red-lt);color:var(--red);border:1px solid #fca5a5}
+.badge-gray{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+
+.chip{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px}
+.chip-power{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.chip-cool{background:var(--cyan-lt);color:var(--cyan);border:1px solid #a5f3fc}
+.chip-fluid{background:var(--purple-lt);color:var(--purple);border:1px solid #ddd6fe}
+.chip-lb{background:var(--green-lt);color:var(--green);border:1px solid #a7f3d0}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 16px;font-size:12px;font-weight:500;z-index:9999;box-shadow:var(--shadow-lg);transform:translateX(120%);transition:transform .25s;display:flex;align-items:center;gap:8px;max-width:340px}
+.toast.show{transform:translateX(0)}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:600px;max-height:92vh;overflow-y:auto;animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.modal-header{padding:16px 20px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:14px;font-weight:700}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:2px 5px;border-radius:5px}
+.modal-close:hover{background:var(--surface2);color:var(--text)}
+.modal-body{padding:16px 20px}
+.modal-footer{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow);text-align:center}
+.stat-val{font-size:36px;font-weight:800;font-family:'DM Mono',monospace;line-height:1}
+.stat-lbl{font-size:12px;color:var(--text2);margin-top:8px;font-weight:600}
+
+.dash-layout{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+.seats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.seat-card{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;transition:all .2s;cursor:pointer;min-height:90px}
+.seat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.seat-card.active{border-top:3px solid var(--red)}
+.seat-card.reserved{border-top:3px solid var(--green)}
+.seat-card.empty{border-top:3px solid var(--border2)}
+.seat-card-header{display:flex;justify-content:space-between;align-items:center;padding:9px 12px 6px}
+.seat-id{font-size:15px;font-weight:800;font-family:'DM Mono',monospace}
+.seat-body{padding:0 12px 10px}
+.seat-row{display:flex;align-items:flex-start;gap:5px;font-size:10px;margin-bottom:2px}
+.seat-key{color:var(--text3);width:36px;min-width:36px}
+.seat-val{font-weight:600;word-break:break-all}
+.seat-dates{font-size:9px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:3px}
+.seat-empty-txt{color:var(--text3);font-size:11px;padding:2px 0}
+
+.loadbank-list{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:14px}
+.lb-row{display:grid;grid-template-columns:60px 40px 1fr;gap:8px;font-size:11px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
+.lb-row:last-child{border-bottom:none}
+.lb-seat{font-weight:700;color:var(--blue);font-family:'DM Mono',monospace}
+.lb-size{color:var(--text3);font-size:10px}
+.lb-name{font-weight:500}
+
+.res-layout{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+.res-seat-list{display:flex;flex-direction:column;gap:4px;max-height:640px;overflow-y:auto}
+.res-seat-item{padding:9px 12px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:11px;transition:all .15s}
+.res-seat-item:hover{border-color:var(--blue);background:var(--blue-lt)}
+.res-seat-item.sel{border-color:var(--blue);background:var(--blue-lt)}
+.res-seat-item .rsi-id{font-weight:800;font-family:'DM Mono',monospace;font-size:13px}
+.res-seat-item .rsi-badge{float:right}
+.res-seat-item .rsi-model{color:var(--text2);font-size:10px;margin-top:2px}
+
+.multi-check-grid{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:var(--radius);padding:8px}
+.multi-check-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;transition:background .12s}
+.multi-check-item:hover{background:var(--surface2)}
+.multi-check-item input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;cursor:pointer}
+.multi-check-item label{flex:1;font-size:11px;cursor:pointer}
+.qty-stepper{display:none;align-items:center;gap:5px}
+.multi-check-item.checked .qty-stepper{display:flex}
+.qty-btn{width:20px;height:20px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.qty-val{font-size:11px;font-weight:700;width:16px;text-align:center}
+.custom-text-input{display:none;width:100%;margin-top:4px;padding:5px 8px;font-size:10px;border:1px solid var(--border2);border-radius:5px;outline:none}
+.multi-check-item.checked .custom-text-input.show{display:block}
+
+.stock-table{width:100%;border-collapse:collapse;font-size:11px}
+.stock-table th{background:var(--surface2);padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);border-bottom:2px solid var(--border2)}
+.stock-table td{padding:7px 10px;border-bottom:1px solid var(--border)}
+.stock-table tr:last-child td{border-bottom:none}
+.stock-input{width:56px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace}
+.stock-remain.neg{color:var(--red);font-weight:700}
+
+.res-table-wrap{overflow-x:auto;margin-top:16px}
+.res-table{width:100%;border-collapse:collapse;min-width:1100px}
+.res-table th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;padding:8px 12px;border-bottom:2px solid var(--border2);text-align:left;white-space:nowrap;background:var(--surface2)}
+.res-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle;white-space:nowrap}
+.res-table tr:hover td{background:var(--surface2)}
+
+.gantt-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.year-nav{display:flex;align-items:center;gap:4px}
+.year-nav-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:12px}
+.year-nav-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+.year-display{font-size:15px;font-weight:700;padding:0 8px;font-family:'DM Mono',monospace}
+.gantt-scroll{overflow:auto;max-height:72vh;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow)}
+.gantt-tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:1200px}
+.gantt-tbl th,.gantt-tbl td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.gantt-tbl th.month-start,.gantt-tbl td.month-start{border-left:2px solid var(--border2)!important}
+.gh-month{background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;padding:7px 4px;text-align:center;border-bottom:2px solid var(--blue);position:sticky;top:0;z-index:15}
+.gh-day{background:var(--surface);color:var(--text3);font-size:10px;font-weight:500;padding:3px 2px;text-align:center;min-width:14px;position:sticky;top:32px;z-index:15;border-bottom:2px solid var(--border2)}
+.gh-day.today-hdr{background:var(--blue-lt);color:var(--blue);font-weight:700}
+.gh-header-label{background:var(--surface2);min-width:180px;max-width:180px;padding:8px 12px;border-right:2px solid var(--border2)!important;border-bottom:2px solid var(--border2)!important;position:sticky;left:0;top:0;z-index:30;box-shadow:2px 0 6px rgba(0,0,0,.06);font-size:11px;font-weight:600;color:var(--text2)}
+.gh-label{background:var(--surface2);min-width:180px;max-width:180px;padding:8px 12px;border-right:2px solid var(--border2)!important;position:sticky;left:0;z-index:10;box-shadow:2px 0 6px rgba(0,0,0,.06)}
+.gl-seat{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace}
+.gl-model{font-size:11px;font-weight:600;color:var(--text);margin-top:1px}
+.gl-person{font-size:9px;color:var(--blue);margin-top:1px;font-weight:500}
+.gantt-cell{padding:2px 0;height:34px;vertical-align:middle}
+.gantt-cell.today-col{background:rgba(37,99,235,.05)}
+.gantt-cell.filled{padding:0}
+.gantt-bar{display:flex;align-items:center;height:100%;width:100%;padding:0 8px;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;box-sizing:border-box;border-radius:4px}
+.bc0{background:#bfdbfe;color:#1e3a8a;border-top:2px solid #3b82f6;border-bottom:2px solid #3b82f6}
+.bc1{background:#bbf7d0;color:#14532d;border-top:2px solid #10b981;border-bottom:2px solid #10b981}
+.bc2{background:#fbcfe8;color:#831843;border-top:2px solid #ec4899;border-bottom:2px solid #ec4899}
+.bc3{background:#fde68a;color:#78350f;border-top:2px solid #f59e0b;border-bottom:2px solid #f59e0b}
+.bc4{background:#ddd6fe;color:#3b0764;border-top:2px solid #8b5cf6;border-bottom:2px solid #8b5cf6}
+.bc5{background:#fecaca;color:#7f1d1d;border-top:2px solid #ef4444;border-bottom:2px solid #ef4444}
+.bc6{background:#a5f3fc;color:#083344;border-top:2px solid #06b6d4;border-bottom:2px solid #06b6d4}
+.bc7{background:#fef08a;color:#713f12;border-top:2px solid #eab308;border-bottom:2px solid #eab308}
+
+.section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.empty{text-align:center;padding:24px;color:var(--text3);font-size:12px}
+
+@media(max-width:900px){
+  .dash-layout,.res-layout{grid-template-columns:1fr}
+  .seats-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .header{padding:0 12px;height:46px}
+  .logo-sub{display:none}
+  .clock{display:none}
+  .tab-btn{padding:10px 12px;font-size:11px}
+  .page{padding:10px}
+  .stats-row{grid-template-columns:1fr}
+  .seats-grid{grid-template-columns:1fr}
+  .modal{max-width:100%;max-height:95vh}
+  .form-row2{grid-template-columns:1fr}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="toast" id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
+
+<!-- 예약 편집 모달 -->
+<div class="modal-overlay" id="resModal" style="display:none" onclick="if(event.target===this)closeResModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="resModalTitle">예약 등록</div>
+      <button class="modal-close" onclick="closeResModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-row2">
+        <div class="form-group">
+          <label class="form-label">장비 배치 (자리)</label>
+          <select class="form-select" id="fSeat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">냉각 종류</label>
+          <select class="form-select" id="fCooling">
+            <option value="">선택</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label class="form-label">모델명</label>
+          <input type="text" class="form-input" id="fModel" placeholder="모델명 직접 입력">
+        </div>
+        <div class="form-group">
+          <label class="form-label">G/W ID (담당자)</label>
+          <input type="text" class="form-input" id="fGwId" placeholder="G/W ID 입력">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">유체</label>
+        <select class="form-select" id="fFluid">
+          <option value="">선택</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">전원 (다중선택, 수량조절 가능)</label>
+        <div class="multi-check-grid" id="powerCheckGrid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">부하기 (다중선택, 수량조절 가능)</label>
+        <div class="multi-check-grid" id="lbCheckGrid"></div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label class="form-label">사용 시작일</label>
+          <input type="date" class="form-input" id="fStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">사용 종료일</label>
+          <input type="date" class="form-input" id="fEnd">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">비고 (유체 브랜드 / 사용 목적)</label>
+        <textarea class="form-textarea" id="fRemark" rows="2" placeholder="유체 브랜드 / 사용 목적"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" id="copyBtn" style="display:none" onclick="openCopyPicker()">📋 다른 자리로 복사</button>
+      <button class="btn btn-danger btn-sm" id="delBtn" style="display:none" onclick="deleteFromModal()">초기화</button>
+      <button class="btn btn-outline btn-sm" onclick="closeResModal()">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="saveReservation()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 다른 자리로 복사 모달 -->
+<div class="modal-overlay" id="copyModal" style="display:none" onclick="if(event.target===this)closeCopyPicker()">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <div class="modal-title">📋 다른 자리로 복사</div>
+      <button class="modal-close" onclick="closeCopyPicker()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">복사할 대상 자리 (비어있는 자리만)</label>
+        <select class="form-select" id="copyTargetSeat"></select>
+      </div>
+      <div style="font-size:10px;color:var(--text3)">현재 입력된 모든 정보(전원, 냉각종류, 유체, 부하기, 기간 등)가 선택한 자리에 그대로 복사됩니다.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeCopyPicker()">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmCopy()">복사 실행</button>
+    </div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-mark">🔷</div>
+    <div>
+      <div class="logo-name">DCS Lab</div>
+      <div class="logo-sub">Resource Management System</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sync-status loading" id="syncStatus">⟳ 연결 중...</div>
+    <div class="live-pill"><span class="live-dot"></span>LIVE</div>
+    <div class="clock" id="clock"></div>
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    대시보드
+  </button>
+  <button class="tab-btn" onclick="switchTab('res',this)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    예약 관리
+  </button>
+  <button class="tab-btn" onclick="switchTab('gantt',this)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    연간 스케줄
+  </button>
+</nav>
+
+<div class="page">
+
+<!-- TAB 1: 대시보드 -->
+<div class="tab-pane active" id="tab-dashboard">
+  <div class="dash-layout">
+    <div>
+      <div class="section-label">장비 현황 (#1 ~ #12)</div>
+      <div class="seats-grid" id="dashSeatsGrid"></div>
+    </div>
+    <div>
+      <div class="stats-row" style="grid-template-columns:1fr;gap:10px;margin-bottom:14px">
+        <div class="card" style="padding:14px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div class="stat-card" style="box-shadow:none;border-color:#bfdbfe;padding:12px"><div class="stat-val" style="color:var(--blue);font-size:26px" id="statDone">0</div><div class="stat-lbl" style="font-size:10px">완료</div></div>
+            <div class="stat-card" style="box-shadow:none;border-color:#fca5a5;padding:12px"><div class="stat-val" style="color:var(--red);font-size:26px" id="statActive">0</div><div class="stat-lbl" style="font-size:10px">사용</div></div>
+            <div class="stat-card" style="box-shadow:none;border-color:#a7f3d0;padding:12px"><div class="stat-val" style="color:var(--green);font-size:26px" id="statReserved">0</div><div class="stat-lbl" style="font-size:10px">예약</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">부하기 운영 상태</div></div>
+        <div class="loadbank-list" id="lbStatusList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: 예약 관리 -->
+<div class="tab-pane" id="tab-res">
+  <div class="res-layout">
+    <div>
+      <div class="section-label">자리 목록</div>
+      <div class="res-seat-list" id="resSeatList"></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">🔧 부하기 재고 현황</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="stock-table" id="stockTable"></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 전체 예약 목록</div>
+          <span class="badge badge-blue" id="resCountBadge">0건</span>
+        </div>
+        <div class="res-table-wrap">
+          <table class="res-table">
+            <thead><tr>
+              <th>자리</th><th>모델명</th><th>냉각종류</th><th>전원</th><th>유체</th><th>부하기</th>
+              <th>G/W ID</th><th>시작일</th><th>종료일</th><th>기간</th><th>상태</th><th>비고</th><th>관리</th>
+            </tr></thead>
+            <tbody id="resTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: 연간 스케줄 -->
+<div class="tab-pane" id="tab-gantt">
+  <div class="gantt-controls">
+    <div class="year-nav">
+      <button class="year-nav-btn" onclick="changeYear(-1)">◀</button>
+      <span class="year-display" id="ganttYear">2026</span>
+      <button class="year-nav-btn" onclick="changeYear(1)">▶</button>
+    </div>
+    <select class="form-select" style="width:130px;padding:6px 10px" id="ganttFilter" onchange="renderGantt()">
+      <option value="all">전체 자리</option>
+    </select>
+    <span style="font-size:10px;color:var(--text3)">막대 위에 마우스를 올리면 상세 정보가 표시됩니다</span>
+  </div>
+  <div class="gantt-scroll"><table class="gantt-tbl" id="ganttTable"></table></div>
+</div>
+
+</div><!-- /page -->
+<script>
+/* ══ CONFIG ══ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbycq1Mqg8_eqN3LnEA3_QDI5tFqk6xgw3A6Y4bYZlH8f-5WTVwQsqmmZtMJ3acYKqlL_w/exec'; // 예: 'https://script.google.com/macros/s/XXXXXX/exec'
+
+function setSyncStatus(state,msg){
+  const el=document.getElementById('syncStatus');
+  if(!el)return;
+  el.className='sync-status '+state;
+  el.textContent=msg;
+}
+async function apiGet(action){
+  if(!API_URL) return null;
+  try{
+    setSyncStatus('loading','⟳ 동기화 중...');
+    const res=await fetch(`${API_URL}?action=${action}`);
+    const json=await res.json();
+    if(json&&json.error){ setSyncStatus('err','✗ 서버 오류'); console.error(json.error); showToast('구글 시트 오류: '+json.error,'⚠️'); return null; }
+    setSyncStatus('ok','✓ 동기화됨');
+    return json;
+  }catch(e){ setSyncStatus('err','✗ 연결 오류'); console.error('apiGet error:',e); return null; }
+}
+async function apiPost(action,data){
+  if(!API_URL) return null;
+  try{
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({action,data:JSON.stringify(data)})});
+    const json=await res.json();
+    if(json&&json.error){ console.error(json.error); showToast('저장 실패: '+json.error,'⚠️'); return null; }
+    return json;
+  }catch(e){ console.error('apiPost error:',action,e); showToast('저장 실패: 네트워크 오류','⚠️'); return null; }
+}
+async function loadAllFromSheet(){
+  if(!API_URL) return;
+  const res=await apiGet('getAll');
+  if(!res||res.error) return;
+  reservations=res.reservations||[];
+  loadbankStock=res.loadbankStock||loadbankStock;
+  saveLS(LS.res,reservations); saveLS(LS.stock,loadbankStock);
+  renderAll();
+}
+
+/* ══ CONSTANTS ══ */
+const SEATS=['#1','#2','#3','#4','#5','#6','#7','#8','#9','#10','#11','#12'];
+const POWER_OPTIONS=['380V 3상 30A','380V 3상 60A','220V 단상'];
+const COOLING_OPTIONS=[
+  'DLC 1상 L2A','DLC 1상 L2L','DLC 1상 L2R',
+  'DLC 2상 L2A','DLC 2상 L2L','DLC 2상 L2R',
+  '액침 1상 L2A','액침 1상 L2L','액침 1상 L2R',
+  '액침 2상 L2A','액침 2상 L2L','액침 2상 L2R',
+];
+const FLUID_OPTIONS=['1상 오일계(저인화)','1상 오일계(고인화)','1상 불소계','1상 에스테르계','1상 실리콘계','2상 불소계','PG-25'];
+const LB_FIXED=['1U 1kW 서버','2U 1kW 서버','2U 2kW 서버','1U 2.2kW 로드뱅크','2U 8kW 로드뱅크'];
+const LB_CUSTOM=['1U 기타','2U 기타'];
+const LB_ALL=[...LB_FIXED,...LB_CUSTOM];
+const BAR_COLORS=['bc0','bc1','bc2','bc3','bc4','bc5','bc6','bc7'];
+
+/* ══ STATE ══ */
+const LS={res:'dcs_res_v1',stock:'dcs_stock_v1'};
+function loadLS(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let reservations=loadLS(LS.res)||[];
+let loadbankStock=loadLS(LS.stock)||{'1U 1kW 서버':2,'2U 1kW 서버':1,'2U 2kW 서버':2,'1U 2.2kW 로드뱅크':2,'2U 8kW 로드뱅크':2};
+let nextId=reservations.length?Math.max(...reservations.map(r=>r.id))+1:1;
+let ganttYear=2026;
+let editingPowers=[]; // [{name,qty}]
+let editingLbs=[];    // [{name,qty,custom}]
+
+/* ══ UTILS ══ */
+function nowKST(){ const kstMs=Date.now()+9*60*60*1000; const d=new Date(kstMs); return {y:d.getUTCFullYear(),m:d.getUTCMonth(),day:d.getUTCDate()}; }
+function todayDateObj(){ const k=nowKST(); return new Date(k.y,k.m,k.day); }
+const today=()=>{ const k=nowKST(); return `${k.y}-${String(k.m+1).padStart(2,'0')}-${String(k.day).padStart(2,'0')}`; };
+function daysInMonth(y,m){return new Date(y,m+1,0).getDate();}
+function daysBetween(s,e){return Math.round((new Date(e)-new Date(s))/864e5)+1;}
+function showToast(msg,icon='✅'){
+  document.getElementById('toastIcon').textContent=icon;
+  document.getElementById('toastMsg').textContent=msg;
+  const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);
+}
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+setInterval(updateClock,1000);updateClock();
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');btn.classList.add('active');
+  if(name==='dashboard')renderDashboard();
+  if(name==='res')renderResTab();
+  if(name==='gantt')renderGantt();
+}
+
+/* 상태 판정: 완료(forceComplete 또는 종료일 지남) / 사용중 / 예약(미래) */
+function getStatus(r){
+  if(r.forceComplete) return 'done';
+  const t=today();
+  if(r.end<t) return 'done';
+  if(r.start<=t && r.end>=t) return 'active';
+  if(r.start>t) return 'reserved';
+  return 'done';
+}
+/* 자리별 대표 예약(카드에 보여줄 것): 사용중 우선, 없으면 가장 가까운 예약, 없으면 null */
+function getSeatRepresentative(seat){
+  const recs=reservations.filter(r=>r.seat===seat&&getStatus(r)!=='done');
+  const activeR=recs.find(r=>getStatus(r)==='active');
+  if(activeR)return activeR;
+  const reservedSorted=recs.filter(r=>getStatus(r)==='reserved').sort((a,b)=>a.start.localeCompare(b.start));
+  return reservedSorted[0]||null;
+}
+function fmtPowers(r){ return (r.powers||[]).map(p=>p.qty>1?`${p.name} x${p.qty}`:p.name); }
+function fmtLbs(r){ return (r.loadbanks||[]).map(l=>{
+  const nm=l.custom?`${l.name}(${l.custom})`:l.name;
+  return l.qty>1?`${nm} x${l.qty}`:nm;
+}); }
+
+/* ══ TAB 1: DASHBOARD ══ */
+function renderDashboard(){
+  const done=reservations.filter(r=>getStatus(r)==='done').length;
+  const active=reservations.filter(r=>getStatus(r)==='active').length;
+  const reserved=reservations.filter(r=>getStatus(r)==='reserved').length;
+  document.getElementById('statDone').textContent=done;
+  document.getElementById('statActive').textContent=active;
+  document.getElementById('statReserved').textContent=reserved;
+
+  document.getElementById('dashSeatsGrid').innerHTML=SEATS.map(seat=>{
+    const r=getSeatRepresentative(seat);
+    const status=r?getStatus(r):'empty';
+    const badgeMap={active:'<span class="badge badge-red">사용중</span>',reserved:'<span class="badge badge-green">예약</span>',empty:'<span class="badge badge-gray">비어있음</span>'};
+    if(!r){
+      return`<div class="seat-card empty">
+        <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap.empty}</div>
+        <div class="seat-body"><div class="seat-empty-txt">사용 가능</div></div>
+      </div>`;
+    }
+    return`<div class="seat-card ${status}">
+      <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap[status]}</div>
+      <div class="seat-body">
+        <div class="seat-row"><span class="seat-key">전원</span><span class="seat-val">${fmtPowers(r).join(', ')||'-'}</span></div>
+        <div class="seat-row"><span class="seat-key">PCW</span><span class="seat-val">${r.cooling||'-'}</span></div>
+        <div class="seat-row"><span class="seat-key">모델</span><span class="seat-val">${r.model||'-'}</span></div>
+        <div class="seat-row"><span class="seat-key">담당</span><span class="seat-val" style="color:var(--blue)">${r.gwId||'-'}</span></div>
+        <div class="seat-dates">📅 ${r.start} ~ ${r.end} (${daysBetween(r.start,r.end)}일)</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 부하기 운영 상태 목록 (완료 아닌 모든 예약의 부하기 나열)
+  const lbLines=[];
+  reservations.filter(r=>getStatus(r)!=='done').forEach(r=>{
+    (r.loadbanks||[]).forEach(l=>{
+      const sizeTag=l.name.startsWith('2U')?'2U':'1U';
+      const nm=l.custom?`${l.name}(${l.custom})`:l.name;
+      lbLines.push({seat:r.seat,size:sizeTag,name:nm+(l.qty>1?` x${l.qty}`:'')});
+    });
+  });
+  document.getElementById('lbStatusList').innerHTML=lbLines.length?lbLines.map(l=>`
+    <div class="lb-row"><span class="lb-seat">${l.seat}</span><span class="lb-size">${l.size}</span><span class="lb-name">${l.name}</span></div>
+  `).join(''):`<div class="empty">등록된 부하기가 없습니다</div>`;
+}
+
+/* ══ TAB 2: 예약 관리 ══ */
+function renderResTab(){
+  document.getElementById('resSeatList').innerHTML=SEATS.map(seat=>{
+    const r=getSeatRepresentative(seat);
+    const status=r?getStatus(r):'empty';
+    const badgeMap={active:'<span class="badge badge-red">사용중</span>',reserved:'<span class="badge badge-green">예약</span>',empty:'<span class="badge badge-gray">비어있음</span>'};
+    return`<div class="res-seat-item" onclick="openResModalFor('${seat}')">
+      <span class="rsi-badge">${badgeMap[status]}</span>
+      <div class="rsi-id">${seat}</div>
+      ${r?`<div class="rsi-model">${r.model||''}</div>`:'<div class="rsi-model" style="color:var(--text3)">클릭하여 등록</div>'}
+    </div>`;
+  }).join('');
+
+  renderStockTable();
+  renderResList();
+}
+
+function renderStockTable(){
+  let html='<thead><tr><th>부하기</th><th>총 수량</th><th>사용 수량</th><th>남은 수량</th></tr></thead><tbody>';
+  LB_FIXED.forEach(name=>{
+    const total=loadbankStock[name]||0;
+    const used=reservations.filter(r=>getStatus(r)!=='done').reduce((sum,r)=>{
+      const found=(r.loadbanks||[]).find(l=>l.name===name);
+      return sum+(found?found.qty:0);
+    },0);
+    const remain=total-used;
+    html+=`<tr>
+      <td>${name}</td>
+      <td><input type="number" class="stock-input" min="0" value="${total}" onchange="setStock('${name}',this.value)"></td>
+      <td>${used}</td>
+      <td class="${remain<0?'stock-remain neg':''}">${remain}</td>
+    </tr>`;
+  });
+  LB_CUSTOM.forEach(name=>{
+    html+=`<tr><td>${name}</td><td>-</td><td>N/A</td><td>N/A</td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('stockTable').innerHTML=html;
+}
+function setStock(name,val){
+  loadbankStock[name]=parseInt(val)||0;
+  saveLS(LS.stock,loadbankStock);
+  apiPost('setStock',{name,value:loadbankStock[name]});
+  renderStockTable();
+}
+
+function renderResList(){
+  const sorted=[...reservations].sort((a,b)=>{
+    const aDone=getStatus(a)==='done'?1:0, bDone=getStatus(b)==='done'?1:0;
+    if(aDone!==bDone)return aDone-bDone;
+    return a.seat.localeCompare(b.seat)||a.start.localeCompare(b.start);
+  });
+  document.getElementById('resCountBadge').textContent=`${sorted.length}건`;
+  document.getElementById('resTbody').innerHTML=sorted.map(r=>{
+    const status=getStatus(r);
+    const isDone=status==='done';
+    const rowStyle=isDone?'opacity:.45;background:#f8f9fa;':'';
+    const badge=status==='active'?'<span class="badge badge-red">사용중</span>':status==='reserved'?'<span class="badge badge-green">예약</span>':'<span class="badge badge-gray">완료</span>';
+    return`<tr style="${rowStyle}">
+      <td><span class="badge badge-blue">${r.seat}</span></td>
+      <td style="font-weight:600;${isDone?'text-decoration:line-through;color:#9ca3af':''}">${r.model||'-'}</td>
+      <td>${r.cooling?`<span class="chip chip-cool">${r.cooling}</span>`:'-'}</td>
+      <td>${fmtPowers(r).map(p=>`<span class="chip chip-power">⚡${p}</span>`).join(' ')||'-'}</td>
+      <td>${r.fluid?`<span class="chip chip-fluid">${r.fluid}</span>`:'-'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${fmtLbs(r).map(l=>`<span class="chip chip-lb">${l}</span>`).join(' ')||'-'}</td>
+      <td style="color:var(--blue);font-weight:500">${r.gwId||'-'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${r.start}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${r.end}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center">${daysBetween(r.start,r.end)}일</td>
+      <td>${badge}</td>
+      <td style="color:var(--text3);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${r.remark||''}</td>
+      <td style="display:flex;gap:3px">
+        <button class="btn-edit" onclick="openResModalById(${r.id})">수정</button>
+        ${!isDone?`<button class="btn-complete" onclick="markComplete(${r.id})">완료</button>`:''}
+        <button class="btn-del" data-id="${r.id}" onclick="deleteReservation(${r.id})">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function markComplete(id){
+  const r=reservations.find(x=>x.id===id); if(!r)return;
+  if(!confirm(`${r.seat} · ${r.model} 예약을 완료 처리하시겠습니까?`))return;
+  r.forceComplete=true;
+  saveLS(LS.res,reservations);
+  await apiPost('updateReservation',r);
+  showToast('완료 처리되었습니다','✅');
+  renderAll();
+}
+async function deleteReservation(id){
+  const btn=document.querySelector(`button[data-id="${id}"]`);
+  if(btn&&btn.dataset.confirming==='1'){
+    reservations=reservations.filter(r=>r.id!==id);
+    saveLS(LS.res,reservations);
+    await apiPost('deleteReservation',{id});
+    showToast('삭제되었습니다','🗑️');
+    renderAll();
+  } else if(btn){
+    btn.dataset.confirming='1';btn.textContent='확인?';btn.style.background='var(--red-lt)';
+    setTimeout(()=>{if(btn.dataset.confirming){btn.dataset.confirming='';btn.textContent='삭제';btn.style.background='';}},3000);
+  }
+}
+
+/* ══ 예약 모달 ══ */
+function buildSelectOptions(sel,list,placeholder){
+  sel.innerHTML=`<option value="">${placeholder}</option>`+list.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+function buildMultiCheckGrid(containerId,options,selected,type){
+  const el=document.getElementById(containerId);
+  el.innerHTML=options.map(name=>{
+    const found=selected.find(s=>s.name===name);
+    const checked=!!found;
+    const qty=found?found.qty:1;
+    const isCustom=type==='lb'&&LB_CUSTOM.includes(name);
+    return`<div class="multi-check-item ${checked?'checked':''}" data-name="${name}">
+      <input type="checkbox" ${checked?'checked':''} onchange="onMultiCheck('${type}','${name}',this.checked)">
+      <label onclick="event.preventDefault();document.querySelector('[data-name=\\'${name}\\'] input[type=checkbox]').click()">${name}</label>
+      <div class="qty-stepper">
+        <button type="button" class="qty-btn" onclick="stepQty('${type}','${name}',-1)">−</button>
+        <span class="qty-val">${qty}</span>
+        <button type="button" class="qty-btn" onclick="stepQty('${type}','${name}',1)">+</button>
+      </div>
+      ${isCustom?`<input type="text" class="custom-text-input ${checked?'show':''}" placeholder="상세 내용 입력" value="${found&&found.custom?found.custom:''}" onchange="setCustomText('${name}',this.value)">`:''}
+    </div>`;
+  }).join('');
+}
+function onMultiCheck(type,name,isChecked){
+  const arr=type==='power'?editingPowers:editingLbs;
+  if(isChecked){
+    if(!arr.find(x=>x.name===name)) arr.push({name,qty:1,custom:''});
+  } else {
+    const idx=arr.findIndex(x=>x.name===name);
+    if(idx>-1)arr.splice(idx,1);
+  }
+  if(type==='power') buildMultiCheckGrid('powerCheckGrid',POWER_OPTIONS,editingPowers,'power');
+  else buildMultiCheckGrid('lbCheckGrid',LB_ALL,editingLbs,'lb');
+}
+function stepQty(type,name,delta){
+  const arr=type==='power'?editingPowers:editingLbs;
+  const item=arr.find(x=>x.name===name);
+  if(!item)return;
+  item.qty=Math.max(1,item.qty+delta);
+  if(type==='power') buildMultiCheckGrid('powerCheckGrid',POWER_OPTIONS,editingPowers,'power');
+  else buildMultiCheckGrid('lbCheckGrid',LB_ALL,editingLbs,'lb');
+}
+function setCustomText(name,val){
+  const item=editingLbs.find(x=>x.name===name);
+  if(item)item.custom=val;
+}
+
+function openResModalFor(seat){
+  const r=getSeatRepresentative(seat);
+  openResModalCore(r?r.id:null,seat);
+}
+function openResModalById(id){
+  const r=reservations.find(x=>x.id===id);
+  if(!r)return;
+  openResModalCore(id,r.seat);
+}
+function openResModalCore(id,defaultSeat){
+  const r=id?reservations.find(x=>x.id===id):null;
+  document.getElementById('resModalTitle').textContent=r?`${r.seat} 예약 수정`:`${defaultSeat} 신규 예약 등록`;
+  document.getElementById('editId').value=id||'';
+  buildSelectOptions(document.getElementById('fSeat'),SEATS,'선택');
+  document.getElementById('fSeat').value=defaultSeat;
+  buildSelectOptions(document.getElementById('fCooling'),COOLING_OPTIONS,'선택');
+  document.getElementById('fCooling').value=r?r.cooling||'':'';
+  buildSelectOptions(document.getElementById('fFluid'),FLUID_OPTIONS,'선택');
+  document.getElementById('fFluid').value=r?r.fluid||'':'';
+  document.getElementById('fModel').value=r?r.model||'':'';
+  document.getElementById('fGwId').value=r?r.gwId||'':'';
+  document.getElementById('fStart').value=r?r.start||'':'';
+  document.getElementById('fEnd').value=r?r.end||'':'';
+  document.getElementById('fRemark').value=r?r.remark||'':'';
+  editingPowers=r?JSON.parse(JSON.stringify(r.powers||[])):[];
+  editingLbs=r?JSON.parse(JSON.stringify(r.loadbanks||[])):[];
+  buildMultiCheckGrid('powerCheckGrid',POWER_OPTIONS,editingPowers,'power');
+  buildMultiCheckGrid('lbCheckGrid',LB_ALL,editingLbs,'lb');
+  document.getElementById('delBtn').style.display=r?'inline-flex':'none';
+  document.getElementById('copyBtn').style.display=r?'inline-flex':'none';
+  document.getElementById('resModal').style.display='flex';
+}
+function closeResModal(){document.getElementById('resModal').style.display='none';}
+
+async function saveReservation(){
+  const id=document.getElementById('editId').value;
+  const seat=document.getElementById('fSeat').value;
+  const model=document.getElementById('fModel').value.trim();
+  const start=document.getElementById('fStart').value;
+  const end=document.getElementById('fEnd').value;
+  if(!seat){showToast('자리를 선택해주세요','⚠️');return;}
+  if(!model){showToast('모델명을 입력해주세요','⚠️');return;}
+  if(!start||!end||start>end){showToast('사용 기간을 확인해주세요','⚠️');return;}
+  if(!document.getElementById('fCooling').value){showToast('냉각 종류를 선택해주세요','⚠️');return;}
+  if(!document.getElementById('fFluid').value){showToast('유체를 선택해주세요','⚠️');return;}
+  // 다른 예약과 자리+기간 겹침 체크 (완료 제외)
+  const overlap=reservations.find(r=>String(r.id)!==String(id)&&r.seat===seat&&getStatus(r)!=='done'&&start<=r.end&&end>=r.start);
+  if(overlap){showToast(`${seat} 자리는 ${overlap.start}~${overlap.end} 기간에 이미 예약이 있습니다`,'⚠️');return;}
+
+  const record={
+    id:id?parseInt(id):nextId++,
+    seat,model,
+    gwId:document.getElementById('fGwId').value.trim(),
+    cooling:document.getElementById('fCooling').value,
+    fluid:document.getElementById('fFluid').value,
+    powers:JSON.parse(JSON.stringify(editingPowers)),
+    loadbanks:JSON.parse(JSON.stringify(editingLbs)),
+    start,end,
+    remark:document.getElementById('fRemark').value.trim(),
+    forceComplete:id?(reservations.find(x=>String(x.id)===String(id))||{}).forceComplete||false:false,
+  };
+  const idx=reservations.findIndex(x=>String(x.id)===String(id));
+  if(idx>-1) reservations[idx]=record; else reservations.push(record);
+  saveLS(LS.res,reservations);
+  await apiPost(id?'updateReservation':'addReservation',record);
+  showToast(id?'수정되었습니다':'예약이 등록되었습니다','✅');
+  closeResModal();renderAll();
+}
+async function deleteFromModal(){
+  const id=document.getElementById('editId').value;
+  if(!id)return;
+  if(!confirm('이 예약을 삭제하시겠습니까?'))return;
+  reservations=reservations.filter(x=>String(x.id)!==String(id));
+  saveLS(LS.res,reservations);
+  await apiPost('deleteReservation',{id:parseInt(id)});
+  showToast('삭제되었습니다','🗑️');
+  closeResModal();renderAll();
+}
+
+/* 다른 자리로 복사 */
+function openCopyPicker(){
+  const occupied=new Set(reservations.filter(r=>getStatus(r)!=='done').map(r=>r.seat));
+  const currentSeat=document.getElementById('fSeat').value;
+  const avail=SEATS.filter(s=>!occupied.has(s)&&s!==currentSeat);
+  if(!avail.length){showToast('복사할 수 있는 빈 자리가 없습니다','⚠️');return;}
+  buildSelectOptions(document.getElementById('copyTargetSeat'),avail,'선택');
+  document.getElementById('copyModal').style.display='flex';
+}
+function closeCopyPicker(){document.getElementById('copyModal').style.display='none';}
+async function confirmCopy(){
+  const target=document.getElementById('copyTargetSeat').value;
+  if(!target){showToast('대상 자리를 선택해주세요','⚠️');return;}
+  const record={
+    id:nextId++,
+    seat:target,
+    model:document.getElementById('fModel').value.trim(),
+    gwId:document.getElementById('fGwId').value.trim(),
+    cooling:document.getElementById('fCooling').value,
+    fluid:document.getElementById('fFluid').value,
+    powers:JSON.parse(JSON.stringify(editingPowers)),
+    loadbanks:JSON.parse(JSON.stringify(editingLbs)),
+    start:document.getElementById('fStart').value,
+    end:document.getElementById('fEnd').value,
+    remark:document.getElementById('fRemark').value.trim(),
+    forceComplete:false,
+  };
+  reservations.push(record);
+  saveLS(LS.res,reservations);
+  await apiPost('addReservation',record);
+  showToast(`${target} 자리에 복사 완료`,'✅');
+  closeCopyPicker();closeResModal();renderAll();
+}
+
+/* ══ TAB 3: GANTT ══ */
+function changeYear(d){ganttYear+=d;document.getElementById('ganttYear').textContent=ganttYear;renderGantt();}
+function renderGantt(){
+  // 필터 옵션 초기화 (최초 1회)
+  const filterSel=document.getElementById('ganttFilter');
+  if(filterSel.options.length<=1){
+    SEATS.forEach(s=>{const opt=document.createElement('option');opt.value=s;opt.textContent=`자리 ${s}`;filterSel.appendChild(opt);});
+  }
+  const filter=filterSel.value;
+  const recs=filter==='all'?reservations:reservations.filter(r=>r.seat===filter);
+  const y=ganttYear,t=today();
+  const MONTHS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  let days=[],monthSpans=[];
+  for(let m=1;m<=12;m++){const dm=daysInMonth(y,m);monthSpans.push({label:MONTHS[m-1],days:dm,month:m});
+    for(let d=1;d<=dm;d++)days.push({ds:`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,isMonthStart:d===1});}
+  let html='<thead><tr><th class="gh-header-label" rowspan="2">예약 정보</th>';
+  monthSpans.forEach(ms=>{html+=`<th colspan="${ms.days}" class="gh-month${ms.month>1?' month-start':''}">${ms.label}</th>`;});
+  html+='</tr><tr>';
+  days.forEach(({ds,isMonthStart})=>{html+=`<th class="gh-day${ds===t?' today-hdr':''}${isMonthStart?' month-start':''}">${parseInt(ds.slice(8))}</th>`;});
+  html+='</tr></thead><tbody>';
+  if(!recs.length)html+=`<tr><td colspan="${days.length+1}" style="text-align:center;padding:28px;color:var(--text3)">예약 데이터가 없습니다</td></tr>`;
+  recs.forEach((r,idx)=>{
+    const col=BAR_COLORS[idx%BAR_COLORS.length];
+    const barStart=r.start>`${y}-01-01`?r.start:`${y}-01-01`;
+    const barEnd=r.end<`${y}-12-31`?r.end:`${y}-12-31`;
+    const inYear=r.start<=`${y}-12-31`&&r.end>=`${y}-01-01`;
+    html+=`<tr><td class="gh-label"><div class="gl-seat">${r.seat}</div><div class="gl-model">${r.cooling||''} / ${r.model}</div><div class="gl-person">${r.gwId||''}</div></td>`;
+    if(!inYear){days.forEach(({isMonthStart})=>{html+=`<td class="gantt-cell${isMonthStart?' month-start':''}"></td>`;});}
+    else{
+      const preIdx=days.findIndex(d=>d.ds===barStart);
+      const postIdx=days.findIndex(d=>d.ds===barEnd);
+      for(let i=0;i<preIdx;i++)html+=`<td class="gantt-cell${days[i].isMonthStart?' month-start':''}"></td>`;
+      const spanCount=postIdx-preIdx+1;
+      const isTodayIn=t>=barStart&&t<=barEnd;
+      const label=r.model.length>20?r.model.slice(0,19)+'…':r.model;
+      html+=`<td colspan="${spanCount}" class="gantt-cell filled${isTodayIn?' today-col':''}${days[preIdx].isMonthStart?' month-start':''}"><div class="gantt-bar ${col}" title="${r.seat}｜${r.cooling}/${r.model}｜${r.gwId||''}｜${r.start}~${r.end}">${label}</div></td>`;
+      for(let i=postIdx+1;i<days.length;i++)html+=`<td class="gantt-cell${days[i].isMonthStart?' month-start':''}"></td>`;
+    }
+    html+='</tr>';
+  });
+  document.getElementById('ganttTable').innerHTML=html+'</tbody>';
+}
+
+function renderAll(){renderDashboard();renderResTab();}
+
+window.addEventListener('load',()=>{
+  renderDashboard();
+  if(API_URL){
+    loadAllFromSheet();
+    setInterval(loadAllFromSheet,30000);
+  } else {
+    setSyncStatus('err','⚠ 로컬 모드');
+  }
+});
+</script>
+</body>
+</html>
