@@ -105,7 +105,11 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
 .stat-lbl{font-size:12px;color:var(--text2);margin-top:8px;font-weight:600}
 
 .dash-layout{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
-.seats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.seats-two-col-wrap{position:relative}
+.seats-two-col{display:flex;gap:10px}
+.seats-col{flex:1;display:flex;flex-direction:column;gap:10px}
+.door-icon{position:absolute;pointer-events:none;z-index:5}
+.door-icon svg{display:block;overflow:visible}
 .seat-card{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;transition:all .2s;cursor:pointer;min-height:90px}
 .seat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
 .seat-card.active{border-top:3px solid var(--red)}
@@ -196,18 +200,57 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
 
 @media(max-width:900px){
   .dash-layout,.res-layout{grid-template-columns:1fr}
-  .seats-grid{grid-template-columns:repeat(2,1fr)}
+  .seats-two-col{gap:6px}
 }
 @media(max-width:768px){
   .header{padding:0 12px;height:46px}
   .logo-sub{display:none}
   .clock{display:none}
-  .tab-btn{padding:10px 12px;font-size:11px}
+  .sync-status{font-size:9px;padding:2px 7px}
+  .live-pill{padding:2px 7px}
+
+  .tab-bar{padding:0 6px}
+  .tab-btn{padding:10px 10px;font-size:11px;gap:4px}
+  .tab-btn svg{display:none}
+
   .page{padding:10px}
+
   .stats-row{grid-template-columns:1fr}
-  .seats-grid{grid-template-columns:1fr}
-  .modal{max-width:100%;max-height:95vh}
+  .stat-card{padding:14px}
+  .stat-val{font-size:28px}
+
+  .seats-two-col{flex-direction:column}
+  .seat-card{min-height:auto}
+  .seat-card-header{padding:8px 10px 5px}
+  .seat-id{font-size:13px}
+  .seat-body{padding:0 10px 9px}
+  .seat-row{font-size:9px}
+  .seat-key{width:34px;min-width:34px}
+
+  .res-layout{gap:12px}
+  .res-seat-list{max-height:220px;flex-direction:row;flex-wrap:wrap}
+  .res-seat-item{flex:1 1 100px;min-width:90px}
+
+  .card{border-radius:10px}
+  .stock-table,.res-table{font-size:10px}
+  .stock-input{width:44px}
+
+  .modal{max-width:100%;max-height:95vh;border-radius:12px}
+  .modal-body{padding:14px 16px}
+  .modal-header{padding:14px 16px 12px}
+  .modal-footer{padding:12px 16px;flex-wrap:wrap}
   .form-row2{grid-template-columns:1fr}
+  .multi-check-grid{max-height:150px}
+
+  .gantt-controls{gap:6px}
+  .year-display{font-size:13px}
+  .gh-label,.gh-header-label{min-width:130px;max-width:130px}
+
+  .door-icon{transform:scale(.75)}
+}
+@media(max-width:420px){
+  .seat-body{font-size:9px}
+  .stats-row .stat-val{font-size:22px}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -227,11 +270,11 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
       <input type="hidden" id="editId">
       <div class="form-row2">
         <div class="form-group">
-          <label class="form-label">장비 배치 (자리)</label>
+          <label class="form-label">장비 배치 (자리) *</label>
           <select class="form-select" id="fSeat"></select>
         </div>
         <div class="form-group">
-          <label class="form-label">냉각 종류</label>
+          <label class="form-label">냉각 종류 *</label>
           <select class="form-select" id="fCooling">
             <option value="">선택</option>
           </select>
@@ -239,7 +282,7 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
       </div>
       <div class="form-row2">
         <div class="form-group">
-          <label class="form-label">모델명</label>
+          <label class="form-label">모델명 *</label>
           <input type="text" class="form-input" id="fModel" placeholder="모델명 직접 입력">
         </div>
         <div class="form-group">
@@ -248,26 +291,26 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">유체</label>
+        <label class="form-label">유체 *</label>
         <select class="form-select" id="fFluid">
           <option value="">선택</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">전원 (다중선택, 수량조절 가능)</label>
+        <label class="form-label">전원 * (다중선택, 수량조절 가능)</label>
         <div class="multi-check-grid" id="powerCheckGrid"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">부하기 (다중선택, 수량조절 가능)</label>
+        <label class="form-label">부하기 * (다중선택, 수량조절 가능)</label>
         <div class="multi-check-grid" id="lbCheckGrid"></div>
       </div>
       <div class="form-row2">
         <div class="form-group">
-          <label class="form-label">사용 시작일</label>
+          <label class="form-label">사용 시작일 *</label>
           <input type="date" class="form-input" id="fStart">
         </div>
         <div class="form-group">
-          <label class="form-label">사용 종료일</label>
+          <label class="form-label">사용 종료일 *</label>
           <input type="date" class="form-input" id="fEnd">
         </div>
       </div>
@@ -334,18 +377,25 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
     연간 스케줄
   </button>
+  <button class="tab-btn" onclick="switchTab('admin',this)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    관리
+  </button>
 </nav>
 
 <div class="page">
 
 <!-- TAB 1: 대시보드 -->
 <div class="tab-pane active" id="tab-dashboard">
-  <div class="dash-layout">
+  <div class="dash-layout" id="dashOuterWrap" style="position:relative">
     <div>
       <div class="section-label">장비 현황 (#1 ~ #12)</div>
-      <div class="seats-grid" id="dashSeatsGrid"></div>
+      <div class="seats-two-col-wrap" style="padding-bottom:34px">
+        <div class="seats-two-col" id="dashSeatsGrid"></div>
+        <div class="door-icon" id="doorIcon1"></div>
+      </div>
     </div>
-    <div>
+    <div style="margin-top:26px">
       <div class="stats-row" style="grid-template-columns:1fr;gap:10px;margin-bottom:14px">
         <div class="card" style="padding:14px">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
@@ -360,6 +410,7 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
         <div class="loadbank-list" id="lbStatusList"></div>
       </div>
     </div>
+    <div class="door-icon" id="doorIcon2"></div>
   </div>
 </div>
 
@@ -373,10 +424,10 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
     <div>
       <div class="card" style="margin-bottom:16px">
         <div class="card-header">
-          <div class="card-title">🔧 부하기 재고 현황</div>
+          <div class="card-title">🔧 부하기 재고 현황 <span style="font-size:9px;color:var(--text3);font-weight:400">(조회 전용 — 수정은 [관리] 탭에서)</span></div>
         </div>
         <div style="overflow-x:auto">
-          <table class="stock-table" id="stockTable"></table>
+          <table class="stock-table" id="stockTableView"></table>
         </div>
       </div>
       <div class="card">
@@ -414,10 +465,35 @@ body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--bg);color:
   <div class="gantt-scroll"><table class="gantt-tbl" id="ganttTable"></table></div>
 </div>
 
+<!-- TAB 4: 관리 (부하기 재고 수정 — 비밀번호 필요) -->
+<div class="tab-pane" id="tab-admin">
+  <div id="adminLockView" class="card" style="max-width:340px;margin:40px auto;padding:24px;text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">🔒</div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:4px">관리자 비밀번호 입력</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px">부하기 재고 수정 권한이 필요합니다</div>
+    <input type="password" class="form-input" id="adminPwInput" placeholder="비밀번호" style="text-align:center;letter-spacing:4px;margin-bottom:10px" onkeydown="if(event.key==='Enter')checkAdminPw()">
+    <button class="btn btn-primary" style="width:100%" onclick="checkAdminPw()">확인</button>
+    <div id="adminPwError" style="display:none;color:var(--red);font-size:11px;margin-top:8px">비밀번호가 올바르지 않습니다</div>
+  </div>
+  <div id="adminUnlockedView" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔧 부하기 재고 관리</div>
+        <button class="btn btn-outline btn-sm" onclick="lockAdmin()">🔒 잠금</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="stock-table" id="stockTableEdit"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /page -->
 <script>
 /* ══ CONFIG ══ */
 const API_URL = 'https://script.google.com/macros/s/AKfycbycq1Mqg8_eqN3LnEA3_QDI5tFqk6xgw3A6Y4bYZlH8f-5WTVwQsqmmZtMJ3acYKqlL_w/exec'; // 예: 'https://script.google.com/macros/s/XXXXXX/exec'
+const ADMIN_PW = '4321'; // 부하기 재고 수정 비밀번호 — 여기서 변경
+let adminUnlocked = false; // 세션 동안만 유지 (새로고침하면 다시 잠김)
 
 function setSyncStatus(state,msg){
   const el=document.getElementById('syncStatus');
@@ -442,9 +518,10 @@ async function apiPost(action,data){
     const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:new URLSearchParams({action,data:JSON.stringify(data)})});
     const json=await res.json();
-    if(json&&json.error){ console.error(json.error); showToast('저장 실패: '+json.error,'⚠️'); return null; }
+    if(json&&json.error){ setSyncStatus('err','✗ 서버 오류'); console.error(json.error); showToast('저장 실패: '+json.error,'⚠️'); return null; }
+    setSyncStatus('ok','✓ 동기화됨');
     return json;
-  }catch(e){ console.error('apiPost error:',action,e); showToast('저장 실패: 네트워크 오류','⚠️'); return null; }
+  }catch(e){ setSyncStatus('err','✗ 연결 오류'); console.error('apiPost error:',action,e); showToast('저장 실패: 네트워크 오류','⚠️'); return null; }
 }
 async function loadAllFromSheet(){
   if(!API_URL) return;
@@ -504,6 +581,28 @@ function switchTab(name,btn){
   if(name==='dashboard')renderDashboard();
   if(name==='res')renderResTab();
   if(name==='gantt')renderGantt();
+  if(name==='admin')renderAdminTab();
+}
+function renderAdminTab(){
+  document.getElementById('adminLockView').style.display=adminUnlocked?'none':'block';
+  document.getElementById('adminUnlockedView').style.display=adminUnlocked?'block':'none';
+  document.getElementById('adminPwInput').value='';
+  document.getElementById('adminPwError').style.display='none';
+  if(adminUnlocked) renderStockTable('stockTableEdit',true);
+}
+function checkAdminPw(){
+  const v=document.getElementById('adminPwInput').value;
+  if(v===ADMIN_PW){
+    adminUnlocked=true;
+    renderAdminTab();
+    showToast('관리자 모드로 전환되었습니다','🔓');
+  } else {
+    document.getElementById('adminPwError').style.display='block';
+  }
+}
+function lockAdmin(){
+  adminUnlocked=false;
+  renderAdminTab();
 }
 
 /* 상태 판정: 완료(forceComplete 또는 종료일 지남) / 사용중 / 예약(미래) */
@@ -530,6 +629,78 @@ function fmtLbs(r){ return (r.loadbanks||[]).map(l=>{
 }); }
 
 /* ══ TAB 1: DASHBOARD ══ */
+function buildSeatCardHtml(seat){
+  const r=getSeatRepresentative(seat);
+  const status=r?getStatus(r):'empty';
+  const badgeMap={active:'<span class="badge badge-red">사용중</span>',reserved:'<span class="badge badge-green">예약</span>',empty:'<span class="badge badge-gray">비어있음</span>'};
+  if(!r){
+    return`<div class="seat-card empty">
+      <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap.empty}</div>
+      <div class="seat-body"><div class="seat-empty-txt">사용 가능</div></div>
+    </div>`;
+  }
+  return`<div class="seat-card ${status}">
+    <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap[status]}</div>
+    <div class="seat-body">
+      <div class="seat-row"><span class="seat-key">전원</span><span class="seat-val">${fmtPowers(r).join(', ')||'-'}</span></div>
+      <div class="seat-row"><span class="seat-key">냉각종류</span><span class="seat-val">${r.cooling||'-'}</span></div>
+      <div class="seat-row"><span class="seat-key">모델</span><span class="seat-val">${r.model||'-'}</span></div>
+      <div class="seat-row"><span class="seat-key">유체</span><span class="seat-val">${r.fluid||'-'}</span></div>
+      ${r.remark?`<div class="seat-row"><span class="seat-key">비고</span><span class="seat-val" style="color:var(--text3);font-size:9px">${r.remark}</span></div>`:''}
+      <div class="seat-dates">📅 ${r.start} ~ ${r.end} (${daysBetween(r.start,r.end)}일)</div>
+      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:5px">
+        <span class="seat-row" style="margin-bottom:0"><span class="seat-key">담당자</span><span class="seat-val" style="color:var(--blue)">${r.gwId||'-'}</span></span>
+      </div>
+    </div>
+  </div>`;
+}
+function renderSeatsTwoCol(containerId){
+  const leftSeats=SEATS.slice(0,6);   // #1~#6
+  const rightSeats=SEATS.slice(6,12); // #7~#12
+  const leftHtml=leftSeats.map(buildSeatCardHtml).join('');
+  const rightHtml=rightSeats.map(buildSeatCardHtml).join('');
+  document.getElementById(containerId).innerHTML=
+    `<div class="seats-col">${leftHtml}</div><div class="seats-col">${rightHtml}</div>`;
+  renderDoorIcons();
+}
+/* 문 아이콘: 카드 배열 흐름과 무관하게 절대위치로 겹쳐 그리는 건축 도면식 문 스윙 심볼
+   위치는 실제 랩실 배치 기준 대략적인 자리라, 필요시 아래 top/right/bottom/left 값만 조정하면 됩니다 */
+/* 문 아이콘: 참고 이미지(문짝+손잡이) 스타일의 작은 인라인 SVG — 래스터 이미지 없이 벡터라 용량 부담 없음 */
+function doorSvg(w,h){
+  return`<svg width="${w}" height="${h}" viewBox="0 0 24 32" fill="none">
+    <rect x="2" y="2" width="20" height="28" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
+    <rect x="5.5" y="5" width="13" height="24" fill="#f1f5f9" stroke="#1e293b" stroke-width="1.4"/>
+    <circle cx="15.5" cy="17" r="1.5" fill="#1e293b"/>
+  </svg>`;
+}
+function renderDoorIcons(){
+  const d1=document.getElementById('doorIcon1'); // #6/#12 아래, 여분의 한 행처럼 중앙 배치
+  const d2=document.getElementById('doorIcon2'); // 2열과 우측 패널 사이 간격, #9/#10 높이
+  if(d1){
+    d1.innerHTML=doorSvg(22,30);
+    d1.style.top=''; d1.style.bottom='0'; d1.style.left='50%'; d1.style.right='';
+    d1.style.transform='translateX(-50%)';
+  }
+  if(d2){
+    const outerWrap=document.getElementById('dashOuterWrap');
+    const rightSeatsCol=document.querySelectorAll('.seats-col')[1]; // #7~#12 열
+    if(outerWrap&&rightSeatsCol){
+      const cards=rightSeatsCol.querySelectorAll('.seat-card');
+      if(cards.length>=4){
+        const c9=cards[2].getBoundingClientRect();  // #9
+        const c10=cards[3].getBoundingClientRect(); // #10
+        const wrapRect=outerWrap.getBoundingClientRect();
+        const midY=((c9.bottom+c10.top)/2)-wrapRect.top;
+        const leftX=c9.right-wrapRect.left; // 2열 오른쪽 끝 = 간격 시작점
+        d2.innerHTML=doorSvg(20,26);
+        d2.style.top=midY+'px';
+        d2.style.left=leftX+'px';
+        d2.style.right='';d2.style.bottom='';
+        d2.style.transform='translate(2px,-50%)';
+      }
+    }
+  }
+}
 function renderDashboard(){
   const done=reservations.filter(r=>getStatus(r)==='done').length;
   const active=reservations.filter(r=>getStatus(r)==='active').length;
@@ -538,27 +709,7 @@ function renderDashboard(){
   document.getElementById('statActive').textContent=active;
   document.getElementById('statReserved').textContent=reserved;
 
-  document.getElementById('dashSeatsGrid').innerHTML=SEATS.map(seat=>{
-    const r=getSeatRepresentative(seat);
-    const status=r?getStatus(r):'empty';
-    const badgeMap={active:'<span class="badge badge-red">사용중</span>',reserved:'<span class="badge badge-green">예약</span>',empty:'<span class="badge badge-gray">비어있음</span>'};
-    if(!r){
-      return`<div class="seat-card empty">
-        <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap.empty}</div>
-        <div class="seat-body"><div class="seat-empty-txt">사용 가능</div></div>
-      </div>`;
-    }
-    return`<div class="seat-card ${status}">
-      <div class="seat-card-header"><div class="seat-id">${seat}</div>${badgeMap[status]}</div>
-      <div class="seat-body">
-        <div class="seat-row"><span class="seat-key">전원</span><span class="seat-val">${fmtPowers(r).join(', ')||'-'}</span></div>
-        <div class="seat-row"><span class="seat-key">PCW</span><span class="seat-val">${r.cooling||'-'}</span></div>
-        <div class="seat-row"><span class="seat-key">모델</span><span class="seat-val">${r.model||'-'}</span></div>
-        <div class="seat-row"><span class="seat-key">담당</span><span class="seat-val" style="color:var(--blue)">${r.gwId||'-'}</span></div>
-        <div class="seat-dates">📅 ${r.start} ~ ${r.end} (${daysBetween(r.start,r.end)}일)</div>
-      </div>
-    </div>`;
-  }).join('');
+  renderSeatsTwoCol('dashSeatsGrid');
 
   // 부하기 운영 상태 목록 (완료 아닌 모든 예약의 부하기 나열)
   const lbLines=[];
@@ -587,11 +738,11 @@ function renderResTab(){
     </div>`;
   }).join('');
 
-  renderStockTable();
+  renderStockTable('stockTableView',false);
   renderResList();
 }
 
-function renderStockTable(){
+function renderStockTable(targetId='stockTableView', editable=false){
   let html='<thead><tr><th>부하기</th><th>총 수량</th><th>사용 수량</th><th>남은 수량</th></tr></thead><tbody>';
   LB_FIXED.forEach(name=>{
     const total=loadbankStock[name]||0;
@@ -602,7 +753,7 @@ function renderStockTable(){
     const remain=total-used;
     html+=`<tr>
       <td>${name}</td>
-      <td><input type="number" class="stock-input" min="0" value="${total}" onchange="setStock('${name}',this.value)"></td>
+      <td>${editable?`<input type="number" class="stock-input" min="0" value="${total}" onchange="setStock('${name}',this.value)">`:total}</td>
       <td>${used}</td>
       <td class="${remain<0?'stock-remain neg':''}">${remain}</td>
     </tr>`;
@@ -611,13 +762,15 @@ function renderStockTable(){
     html+=`<tr><td>${name}</td><td>-</td><td>N/A</td><td>N/A</td></tr>`;
   });
   html+='</tbody>';
-  document.getElementById('stockTable').innerHTML=html;
+  const el=document.getElementById(targetId);
+  if(el) el.innerHTML=html;
 }
 function setStock(name,val){
   loadbankStock[name]=parseInt(val)||0;
   saveLS(LS.stock,loadbankStock);
   apiPost('setStock',{name,value:loadbankStock[name]});
-  renderStockTable();
+  renderStockTable('stockTableEdit',true);
+  renderStockTable('stockTableView',false);
 }
 
 function renderResList(){
@@ -627,12 +780,18 @@ function renderResList(){
     return a.seat.localeCompare(b.seat)||a.start.localeCompare(b.start);
   });
   document.getElementById('resCountBadge').textContent=`${sorted.length}건`;
+  let prevDone=false;
   document.getElementById('resTbody').innerHTML=sorted.map(r=>{
     const status=getStatus(r);
     const isDone=status==='done';
+    let separator='';
+    if(isDone&&!prevDone){
+      prevDone=true;
+      separator=`<tr><td colspan="13" style="padding:6px 12px;background:#f1f5f9;border-bottom:2px solid #cbd5e1;font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase">✅ 완료된 예약</td></tr>`;
+    }
     const rowStyle=isDone?'opacity:.45;background:#f8f9fa;':'';
     const badge=status==='active'?'<span class="badge badge-red">사용중</span>':status==='reserved'?'<span class="badge badge-green">예약</span>':'<span class="badge badge-gray">완료</span>';
-    return`<tr style="${rowStyle}">
+    const rowHtml=`<tr style="${rowStyle}">
       <td><span class="badge badge-blue">${r.seat}</span></td>
       <td style="font-weight:600;${isDone?'text-decoration:line-through;color:#9ca3af':''}">${r.model||'-'}</td>
       <td>${r.cooling?`<span class="chip chip-cool">${r.cooling}</span>`:'-'}</td>
@@ -651,6 +810,7 @@ function renderResList(){
         <button class="btn-del" data-id="${r.id}" onclick="deleteReservation(${r.id})">삭제</button>
       </td>
     </tr>`;
+    return separator+rowHtml;
   }).join('');
 }
 
@@ -681,6 +841,16 @@ async function deleteReservation(id){
 function buildSelectOptions(sel,list,placeholder){
   sel.innerHTML=`<option value="">${placeholder}</option>`+list.map(o=>`<option value="${o}">${o}</option>`).join('');
 }
+/* 현재 편집 중인 예약(editId) 자신의 기존 배정은 제외하고 남은 재고 계산 */
+function getRemainingStock(name){
+  const excludeId=document.getElementById('editId').value||null;
+  const total=loadbankStock[name]||0;
+  const used=reservations.filter(r=>getStatus(r)!=='done'&&String(r.id)!==String(excludeId)).reduce((sum,r)=>{
+    const found=(r.loadbanks||[]).find(l=>l.name===name);
+    return sum+(found?found.qty:0);
+  },0);
+  return total-used;
+}
 function buildMultiCheckGrid(containerId,options,selected,type){
   const el=document.getElementById(containerId);
   el.innerHTML=options.map(name=>{
@@ -688,9 +858,12 @@ function buildMultiCheckGrid(containerId,options,selected,type){
     const checked=!!found;
     const qty=found?found.qty:1;
     const isCustom=type==='lb'&&LB_CUSTOM.includes(name);
+    const isFixedLb=type==='lb'&&LB_FIXED.includes(name);
+    const remaining=isFixedLb?getRemainingStock(name):null;
+    const outOfStock=isFixedLb&&!checked&&remaining<=0;
     return`<div class="multi-check-item ${checked?'checked':''}" data-name="${name}">
-      <input type="checkbox" ${checked?'checked':''} onchange="onMultiCheck('${type}','${name}',this.checked)">
-      <label onclick="event.preventDefault();document.querySelector('[data-name=\\'${name}\\'] input[type=checkbox]').click()">${name}</label>
+      <input type="checkbox" ${checked?'checked':''} ${outOfStock?'disabled':''} onchange="onMultiCheck('${type}','${name}',this.checked)">
+      <label onclick="event.preventDefault();if(!${outOfStock})document.querySelector('[data-name=\\'${name}\\'] input[type=checkbox]').click()" style="${outOfStock?'color:var(--text3)':''}">${name}${isFixedLb?` <span style="font-size:9px;color:${remaining<=0?'var(--red)':'var(--text3)'}">(남은 ${remaining})</span>`:''}</label>
       <div class="qty-stepper">
         <button type="button" class="qty-btn" onclick="stepQty('${type}','${name}',-1)">−</button>
         <span class="qty-val">${qty}</span>
@@ -703,6 +876,12 @@ function buildMultiCheckGrid(containerId,options,selected,type){
 function onMultiCheck(type,name,isChecked){
   const arr=type==='power'?editingPowers:editingLbs;
   if(isChecked){
+    if(type==='lb'&&LB_FIXED.includes(name)&&getRemainingStock(name)<=0){
+      showToast(`${name} 재고가 없어 선택할 수 없습니다`,'⚠️');
+      if(type==='power') buildMultiCheckGrid('powerCheckGrid',POWER_OPTIONS,editingPowers,'power');
+      else buildMultiCheckGrid('lbCheckGrid',LB_ALL,editingLbs,'lb');
+      return;
+    }
     if(!arr.find(x=>x.name===name)) arr.push({name,qty:1,custom:''});
   } else {
     const idx=arr.findIndex(x=>x.name===name);
@@ -715,6 +894,10 @@ function stepQty(type,name,delta){
   const arr=type==='power'?editingPowers:editingLbs;
   const item=arr.find(x=>x.name===name);
   if(!item)return;
+  if(type==='lb'&&LB_FIXED.includes(name)&&delta>0){
+    const remaining=getRemainingStock(name); // 이미 이 항목이 체크된 상태이므로 remaining은 "이 예약 몫 제외" 기준
+    if(item.qty+1>remaining){ showToast(`${name} 재고가 부족합니다 (남은 수량 ${remaining})`,'⚠️'); return; }
+  }
   item.qty=Math.max(1,item.qty+delta);
   if(type==='power') buildMultiCheckGrid('powerCheckGrid',POWER_OPTIONS,editingPowers,'power');
   else buildMultiCheckGrid('lbCheckGrid',LB_ALL,editingLbs,'lb');
@@ -769,6 +952,8 @@ async function saveReservation(){
   if(!start||!end||start>end){showToast('사용 기간을 확인해주세요','⚠️');return;}
   if(!document.getElementById('fCooling').value){showToast('냉각 종류를 선택해주세요','⚠️');return;}
   if(!document.getElementById('fFluid').value){showToast('유체를 선택해주세요','⚠️');return;}
+  if(editingPowers.length===0){showToast('전원을 1개 이상 선택해주세요','⚠️');return;}
+  if(editingLbs.length===0){showToast('부하기를 1개 이상 선택해주세요','⚠️');return;}
   // 다른 예약과 자리+기간 겹침 체크 (완료 제외)
   const overlap=reservations.find(r=>String(r.id)!==String(id)&&r.seat===seat&&getStatus(r)!=='done'&&start<=r.end&&end>=r.start);
   if(overlap){showToast(`${seat} 자리는 ${overlap.start}~${overlap.end} 기간에 이미 예약이 있습니다`,'⚠️');return;}
@@ -878,6 +1063,14 @@ function renderGantt(){
     html+='</tr>';
   });
   document.getElementById('ganttTable').innerHTML=html+'</tbody>';
+  // 오늘이 속한 연도를 보고 있으면 현재 월로 자동 스크롤
+  setTimeout(()=>{
+    const scrollEl=document.querySelector('.gantt-scroll');
+    const todayTh=document.querySelector('.gh-day.today-hdr');
+    if(scrollEl&&todayTh){
+      scrollEl.scrollLeft=Math.max(0, todayTh.offsetLeft-220);
+    }
+  },50);
 }
 
 function renderAll(){renderDashboard();renderResTab();}
@@ -890,6 +1083,9 @@ window.addEventListener('load',()=>{
   } else {
     setSyncStatus('err','⚠ 로컬 모드');
   }
+});
+window.addEventListener('resize',()=>{
+  if(document.getElementById('tab-dashboard').classList.contains('active')) renderDoorIcons();
 });
 </script>
 </body>
